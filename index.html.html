@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>國立高雄大學管院迎新 - 誰是大富翁隊輔互動平板手冊</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;800;900&family=Chango&display=swap');
+    
+    body {
+      font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+      touch-action: manipulation;
+    }
+
+    /* 隱藏滾動條但保持滾動 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 棋盤格陰影與立體感 */
+    .monopoly-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      aspect-ratio: 1 / 1;
+    }
+
+    .tile-corner {
+      box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.15);
+    }
+    .tile-edge {
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+    }
+
+    /* 骰子 3D 動畫效果 */
+    @keyframes rollDice {
+      0% { transform: rotate(0deg) scale(0.9); }
+      50% { transform: rotate(180deg) scale(1.15); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    .dice-rolling {
+      animation: rollDice 0.45s ease-out;
+    }
+
+    /* 棋子跳動效果 */
+    @keyframes pawnJump {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px) scale(1.1); }
+    }
+    .pawn-active {
+      animation: pawnJump 1s infinite ease-in-out;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; padding: 0 !important; }
+      .print-page { page-break-after: always; break-after: page; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col select-none">
+
+  <!-- 頂部導覽列與樓層切換 -->
+  <header class="no-print sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-3 py-2.5">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- 標題與當前狀態 -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center font-black text-white text-lg shadow-md">
+          管
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-sm md:text-base font-extrabold text-white tracking-wide">
+              誰是大富翁・隊輔平板系統
+            </h1>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              迎新專用
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400">高雄大學管理學院 115 級新生營隊</p>
+        </div>
+      </div>
+
+      <!-- 功能分頁切換 -->
+      <nav class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+        <button onclick="switchTab('board')" id="tabBtnBoard" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm">
+          <i class="ph-bold ph-game-controller text-sm"></i>
+          <span>大富翁棋盤</span>
+        </button>
+        <button onclick="switchTab('scoreboard')" id="tabBtnScore" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+          <i class="ph-bold ph-trophy text-sm"></i>
+          <span>各組點點</span>
+          <span id="scoreBadgeTotal" class="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">8組</span>
+        </button>
+        <button onclick="switchTab('rules')" id="tabBtnRules" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+          <i class="ph-bold ph-book-open-text text-sm"></i>
+          <span>規則與道具卡</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-2 sm:p-4 flex flex-col justify-between">
+
+    <!-- ===== 頁面 1：大富翁互動棋盤 ===== -->
+    <div id="viewBoard" class="w-full flex-1 flex flex-col">
+      
+      <!-- 樓層切換標籤列 -->
+      <div class="flex items-center justify-between gap-2 mb-3 bg-slate-950 p-1.5 rounded-2xl border border-slate-800/80">
+        <div class="flex items-center gap-1 sm:gap-1.5 flex-1 overflow-x-auto no-scrollbar">
+          <button onclick="changeFloor('B1')" id="btnFloorB1" class="floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-rose-600 text-white shadow-lg shadow-rose-900/30">
+            <span>B1</span>
+            <span class="text-[11px] font-normal opacity-90">財金</span>
+          </button>
+          <button onclick="changeFloor('1F')" id="btnFloor1F" class="floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700">
+            <span>1F</span>
+            <span class="text-[11px] font-normal opacity-90">應經</span>
+          </button>
+          <button onclick="changeFloor('2F')" id="btnFloor2F" class="floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700">
+            <span>2F</span>
+            <span class="text-[11px] font-normal opacity-90">資管</span>
+          </button>
+          <button onclick="changeFloor('3F')" id="btnFloor3F" class="floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700">
+            <span>3F</span>
+            <span class="text-[11px] font-normal opacity-90">亞太</span>
+          </button>
+        </div>
+
+        <!-- 小隊棋子切換選擇 -->
+        <div class="flex items-center gap-1.5 pl-2 border-l border-slate-800">
+          <span class="text-[11px] text-slate-400 font-bold hidden sm:inline">當前小組:</span>
+          <select id="currentTeamSelect" onchange="setCurrentTeam(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg text-xs font-black text-amber-400 px-2 py-1.5 focus:outline-none focus:border-amber-400">
+            <option value="1">第 1 組 (橙)</option>
+            <option value="2">第 2 組 (粉)</option>
+            <option value="3">第 3 組 (藍)</option>
+            <option value="4">第 4 組 (綠)</option>
+            <option value="5">第 5 組 (黃)</option>
+            <option value="6">第 6 組 (青)</option>
+            <option value="7">第 7 組 (紫)</option>
+            <option value="8">第 8 組 (紅)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 棋盤外框容器 -->
+      <div class="relative w-full max-w-[620px] mx-auto bg-slate-950 p-2 sm:p-3 rounded-3xl border-2 border-slate-800 shadow-2xl">
+
+        <!-- 4x4 迴圈盤面 -->
+        <div id="monopolyBoardContainer" class="monopoly-grid gap-1.5 sm:gap-2 w-full">
+          <!-- JS 動態生成 16 格 (外圈 12 格 + 中心 2x2 樓層標誌梗圖區) -->
+        </div>
+
+        <!-- 浮動當前格事件說明卡（觸發時顯示） -->
+        <div id="tileEventAlert" class="hidden absolute inset-x-4 bottom-4 bg-slate-900/95 backdrop-blur-md border border-amber-500/50 p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-2 z-30 transition-all">
+          <div class="flex items-start gap-2.5">
+            <div id="alertIcon" class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl flex-shrink-0 mt-0.5">
+              💡
+            </div>
+            <div>
+              <div id="alertTitle" class="text-xs sm:text-sm font-black text-white">踩到格子</div>
+              <div id="alertDesc" class="text-[11px] sm:text-xs text-slate-300">事件效果說明</div>
+            </div>
+          </div>
+          <button onclick="closeAlert()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i class="ph-bold ph-x text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 底部控制板：骰子 + 操作功能 -->
+      <div class="max-w-[620px] mx-auto w-full mt-3 bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+        <!-- 擲骰區域 (限定 1~3 點) -->
+        <div class="flex items-center gap-3">
+          <div id="diceFace" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black text-2xl shadow-lg border border-amber-300 cursor-pointer select-none active:scale-95 transition" onclick="rollDice()">
+            3
+          </div>
+          <div>
+            <button onclick="rollDice()" id="rollDiceBtn" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center gap-1 active:scale-95 transition">
+              <i class="ph-bold ph-dice-three text-base"></i>
+              <span>骰骰子 (1~3點)</span>
+            </button>
+            <p class="text-[10px] text-slate-400 mt-0.5">依照規則：沿著格子<b>逆時針</b>移動！</p>
+          </div>
+        </div>
+
+        <!-- 棋子位置手動校正與點點加減 -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="stepCurrentPawn(-1)" title="後退1格" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold active:scale-95">
+            <i class="ph-bold ph-arrow-u-up-left"></i>
+          </button>
+          <button onclick="stepCurrentPawn(1)" title="前進1格" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold active:scale-95">
+            <i class="ph-bold ph-arrow-u-up-right"></i>
+          </button>
+          <button onclick="quickAddPoints(3)" title="通關紅格(+3)" class="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs active:scale-95 flex items-center gap-1">
+            <span>+3點</span>
+          </button>
+          <button onclick="quickAddPoints(2)" title="通關趣味/SDGs(+2)" class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs active:scale-95 flex items-center gap-1">
+            <span>+2點</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 頁面 2：各組點點即時記分板 (對照 Page 5 各組點點) ===== -->
+    <div id="viewScoreboard" class="hidden w-full max-w-4xl mx-auto flex-1 flex flex-col">
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+            <i class="ph-fill ph-circles-three-plus text-amber-400"></i>
+            各組點點即時登記表（第 1 ~ 8 組）
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">隊輔需在跑關中即時加減小組點點，通關結束後依點數進行全場排名！</p>
+        </div>
+        <button onclick="resetAllScores()" class="px-3 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 text-xs font-bold hover:bg-rose-900 transition">
+          重置點點
+        </button>
+      </div>
+
+      <!-- 8 組計分卡片網格 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" id="teamScoreCardsContainer">
+        <!-- JS 動態生成 8 組卡片 -->
+      </div>
+
+      <!-- 點點異動歷史紀錄 -->
+      <div class="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3 flex-1 flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="ph-bold ph-clock-counter-clockwise"></i> 點點異動日誌
+          </span>
+          <button onclick="clearScoreLog()" class="text-[11px] text-slate-500 hover:text-slate-300">清空紀錄</button>
+        </div>
+        <div id="scoreLogList" class="mt-2 space-y-1.5 max-h-40 overflow-y-auto text-xs text-slate-400 no-scrollbar">
+          <div class="text-center py-4 text-slate-600">目前尚無點數增減紀錄</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 頁面 3：規則說明與特殊卡牌庫 (對照 Page 6、Page 7) ===== -->
+    <div id="viewRules" class="hidden w-full max-w-4xl mx-auto flex-1 flex flex-col space-y-4">
+      
+      <!-- 三大核心規則 (Page 6) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- 場地介紹 -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center text-xl font-black mb-3">
+              <i class="ph-bold ph-buildings"></i>
+            </div>
+            <h3 class="text-sm font-black text-white mb-2">場地介紹</h3>
+            <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+              <li>• 共四層樓（管院 B1 到 3F：B1 財金、1F 應經、2F 資管、3F 亞太）。</li>
+              <li>• 每層樓共 12 格格子，除 4 個頂點遊戲格，其餘皆為天災人禍事件格。</li>
+              <li>• 同一小組每層樓起始點相同，至下一層依然為同位置。</li>
+              <li>• 每層樓各有兩小隊，<b>逆時針</b>骰骰子進行！</li>
+            </ul>
+          </div>
+          <span class="mt-3 text-[10px] text-teal-400 font-bold bg-teal-950/60 px-2 py-1 rounded-lg self-start">管院全棟跑關</span>
+        </div>
+
+        <!-- 移動規則 -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl font-black mb-3">
+              <i class="ph-bold ph-person-simple-walk"></i>
+            </div>
+            <h3 class="text-sm font-black text-white mb-2">移動規則</h3>
+            <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+              <li>• 每組準備一個最高 3 點的骰子（1~3 點），依點數前進。</li>
+              <li>• 完成當層樓全部格子（回到出生點），便往上一樓層依序進行。</li>
+              <li>• 若跑完所有樓層未集齊關卡且時間充裕，可返回起始樓層進行第二輪。</li>
+              <li>• 第二輪若踩到已完成關卡，可選<b>「再玩一次」</b>或<b>「再骰一次」</b>。</li>
+            </ul>
+          </div>
+          <span class="mt-3 text-[10px] text-sky-400 font-bold bg-sky-950/60 px-2 py-1 rounded-lg self-start">逆時針繞圈前進</span>
+        </div>
+
+        <!-- 獎勵規則 -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl font-black mb-3">
+              <i class="ph-bold ph-coins"></i>
+            </div>
+            <h3 class="text-sm font-black text-white mb-2">獎勵規則</h3>
+            <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+              <li>• 凡通過的獎勵可<b>重複獲得</b>。</li>
+              <li>• 通過<b>紅色系所專業格</b>獎勵：<b>3 個點點</b>（+3）。</li>
+              <li>• 通過<b>趣味遊戲格（紫）、SDGs 格（藍）</b>獎勵：<b>2 個點點</b>（+2）。</li>
+              <li>• 各種天災人禍格依照格子數字即時加減。</li>
+            </ul>
+          </div>
+          <span class="mt-3 text-[10px] text-amber-400 font-bold bg-amber-950/60 px-2 py-1 rounded-lg self-start">紅格+3 / 紫藍格+2</span>
+        </div>
+      </div>
+
+      <!-- 隊輔須知與特殊卡須知 (Page 7) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- 隊輔須知 -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-amber-500/30">
+          <h4 class="text-sm font-black text-amber-400 flex items-center gap-2 mb-2.5">
+            <i class="ph-fill ph-device-tablet-speaker"></i> 隊輔平板使用須知
+          </h4>
+          <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+            <li>小隊移動時，需同時將自己隊伍對應數字在此手冊中<b>沿著格子逆時針移動</b>。</li>
+            <li>隊輔要在「各組點點」頁面<b>即時更正小組點點數量</b>，務必確實做好加減！</li>
+            <li>維持隊伍前進節奏，避免在天災人禍格或關卡前堵塞。</li>
+          </ol>
+        </div>
+
+        <!-- 特殊卡須知 -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-rose-500/30">
+          <h4 class="text-sm font-black text-rose-400 flex items-center gap-2 mb-2.5">
+            <i class="ph-fill ph-cards"></i> 特殊卡使用規則
+          </h4>
+          <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+            <li>隊輔要清楚了解每一張卡牌的功能。</li>
+            <li>特殊卡有分<b>「對他人使用」</b>與<b>「對自己使用」</b>，切勿混用。</li>
+            <li>若是要<b>減少或交換他人點點</b>，請務必在 <b>Line 群組回報</b>，統一由主控台調整！</li>
+            <li>每張特殊卡只能使用一次，用畢由隊輔收回。</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- 特殊卡快速查詢抽卡器 -->
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm font-black text-white flex items-center gap-2">
+            <i class="ph-bold ph-sparkle text-amber-400"></i> 特殊事件卡牌庫（範例與功能速查）
+          </h4>
+          <button onclick="drawRandomSpecialCard()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold active:scale-95 transition">
+            抽一張特殊卡
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5" id="specialCardsList">
+          <!-- 卡牌預覽 -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 腳本區域：四大樓層完整盤面資料與互動程式 -->
+  <script>
+    /* 
+      12 個格子的環形排列順序 (逆時針)：
+      盤面外圈 12 格坐標位置映射 (4x4 網格中的 12 個外圈格)：
+      0:  (0,0) 左上頂點
+      1:  (1,0) 左中1
+      2:  (2,0) 左中2
+      3:  (3,0) 左下頂點
+      4:  (3,1) 下中1
+      5:  (3,2) 下中2
+      6:  (3,3) 右下頂點
+      7:  (2,3) 右中2
+      8:  (1,3) 右中1
+      9:  (0,3) 右上頂點
+      10: (0,2) 上中2
+      11: (0,1) 上中1
+    */
+
+    const floorBoards = {
+      // ===== B1 財務金融系（主題：愛情 / 股票投資人）=====
+      "B1": {
+        name: "B1 財金系",
+        subTitle: "愛情中股票投資人",
+        themeColor: "rose",
+        centerEmoji: "💘",
+        centerText: "B1",
+        centerSub: "丘比特之箭・愛情大作戰",
+        tiles: [
+          // 0: 左上 (對照 PDF：金融專有名詞對對樂，出生點 1)
+          { id: 0, title: "金融專有名詞對對樂", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點1", hint: "8分鐘限時連線配對金融名詞" },
+          // 1: 左中1 (被仙人跳 -4)
+          { id: 1, title: "被仙人跳", sub: "荷包大失血", points: "-4", type: "disaster", tag: "天災人禍", hint: "扣除 4 個點點" },
+          // 2: 左中2 (被斷崖式分手但又拯救了一次荷包 +6)
+          { id: 2, title: "被斷崖式分手但又拯救了一次荷包", sub: "因禍得福省大錢", points: "+6", type: "fortune", tag: "天災人禍", hint: "賺爛了！點點+6" },
+          // 3: 左下 (盲人方陣 +2)
+          { id: 3, title: "盲人方陣", sub: "SDG 4/10 優質教育", points: "+2", type: "sdgs", tag: "SDGs 主題", hint: "全隊蒙眼排成正方形" },
+          // 4: 下中1 (寶寶多喝溫開水 -2)
+          { id: 4, title: "寶寶多喝溫開水", sub: "敷衍回覆被生氣", points: "-2", type: "disaster", tag: "天災人禍", hint: "扣除 2 個點點" },
+          // 5: 下中2 (寶寶給我送早餐 +1)
+          { id: 5, title: "寶寶給我送早餐", sub: "早八有人排隊買早餐", points: "+1", type: "fortune", tag: "天災人禍", hint: "增加 1 個點點" },
+          // 6: 右下 (手舞足蹈 +3，出生點 2)
+          { id: 6, title: "手舞足蹈", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點2", hint: "禁言比手畫腳猜經濟學專有名詞" },
+          // 7: 右中2 (跟寶寶一起過紀念日 +3)
+          { id: 7, title: "跟寶寶一起過紀念日", sub: "甜蜜放閃儀式感", points: "+3", type: "fortune", tag: "天災人禍", hint: "點點 +3" },
+          // 8: 右中1 (被談戀愛後的銀行帳戶嚇到 退後3格)
+          { id: 8, title: "被談戀愛後的銀行帳戶嚇到", sub: "餘額不足警報", points: "退後3格", type: "disaster", tag: "移動懲罰", hint: "小隊棋子立刻逆時針退後 3 格" },
+          // 9: 右上 (趣味傳球接力：支援前線 +2)
+          { id: 9, title: "趣味傳球接力：支援前線", sub: "非手部指定部位傳球", points: "+2", type: "fun", tag: "趣味遊戲", hint: "手臂/肩膀/頭部傳球成功" },
+          // 10: 上中2 (跟寶寶一起蜜月 +3)
+          { id: 10, title: "跟寶寶一起蜜月", sub: "甜蜜旅行大加分", points: "+3", type: "fortune", tag: "天災人禍", hint: "點點 +3" },
+          // 11: 上中1 (修到戀愛學分 前進1格)
+          { id: 11, title: "修到戀愛學分", sub: "脫單大成功", points: "前進1格", type: "fortune", tag: "天災人禍", hint: "直接往前多踩 1 格" }
+        ]
+      },
+
+      // ===== 1F 應用經濟系（主題：社畜界馬拉松選手）=====
+      "1F": {
+        name: "1F 應經系",
+        subTitle: "社畜界馬拉松選手",
+        themeColor: "emerald",
+        centerEmoji: "💼",
+        centerText: "1F",
+        centerSub: "累趴上班族・社畜日常",
+        tiles: [
+          // 0: 左上 (拼字遊戲 +3，出生點 3)
+          { id: 0, title: "拼字遊戲", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點1", hint: "資源分配與機會成本拼字賽" },
+          // 1: 左中1 (竊取機密被抓包 -4)
+          { id: 1, title: "竊取機密被抓包", sub: "商業間諜直接被炒", points: "-4", type: "disaster", tag: "天災人禍", hint: "扣除 4 個點點" },
+          // 2: 左中2 (熬夜加班 +6 但要螃蟹走結束這層樓)
+          { id: 2, title: "熬夜加班", sub: "肝換加班費", points: "+6", type: "fortune", tag: "特殊懲罰", hint: "+6點！但全組要螃蟹走直到離開這層樓！" },
+          // 3: 左下 (SDGs 知識王 +2)
+          { id: 3, title: "SDGs 知識王", sub: "Kahoot 答題考驗", points: "+2", type: "sdgs", tag: "SDGs 主題", hint: "平板答對 7 題永續目標過關" },
+          // 4: 下中1 (老闆畫的餅消化不良 -2)
+          { id: 4, title: "老闆畫的餅消化不良", sub: "年終又落空了", points: "-2", type: "disaster", tag: "天災人禍", hint: "扣除 2 個點點" },
+          // 5: 下中2 (偷公司水電 +2)
+          { id: 5, title: "偷公司水電", sub: "充飽手機又裝滿水回家", points: "+2", type: "fortune", tag: "天災人禍", hint: "點點 +2" },
+          // 6: 右下 (支援前線 +3，出生點 0)
+          { id: 6, title: "支援前線", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點2", hint: "供需平衡補給物資傳遞" },
+          // 7: 右中2 (發薪水囉！！！ +3)
+          { id: 7, title: "發薪水囉！！！", sub: "戶頭入帳的幸福瞬間", points: "+3", type: "fortune", tag: "天災人禍", hint: "點點 +3" },
+          // 8: 右中1 (辦公室戀情被抓包 退後一格)
+          { id: 8, title: "辦公室戀情被抓包", sub: "被調職不同部門", points: "退後1格", type: "disaster", tag: "移動懲罰", hint: "小隊棋子退後 1 格" },
+          // 9: 右上 (雞同鴨講 +2)
+          { id: 9, title: "雞同鴨講", sub: "不能講關鍵字的口語傳話", points: "+2", type: "fun", tag: "趣味遊戲", hint: "不能比動作與發雜音，猜中過關" },
+          // 10: 上中2 (販賣機底下撿到錢 +1)
+          { id: 10, title: "販賣機底下撿到錢", sub: "幸運小確幸", points: "+1", type: "fortune", tag: "天災人禍", hint: "點點 +1" },
+          // 11: 上中1 (霸道總裁愛上我 前進1格)
+          { id: 11, title: "霸道總裁愛上我", sub: "言情小說降臨現實", points: "前進1格", type: "fortune", tag: "天災人禍", hint: "直接往前多前進 1 格" }
+        ]
+      },
+
+      // ===== 2F 資訊管理系（主題：小舔狗人 / 柴犬富婆）=====
+      "2F": {
+        name: "2F 資管系",
+        subTitle: "小舔狗人・柴犬富婆",
+        themeColor: "amber",
+        centerEmoji: "🐶",
+        centerText: "2F",
+        centerSub: "汪汪！富婆飯飯餓餓",
+        tiles: [
+          // 0: 左上 (程式語言連連看 +3，出生點 5)
+          { id: 0, title: "程式語言連連看", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點1", hint: "Hello World 程式碼配對 Java/C/C++/Python" },
+          // 1: 左中1 (富婆飯飯餓餓 +4)
+          { id: 1, title: "富婆飯飯餓餓", sub: "成功討到零用錢", points: "+4", type: "fortune", tag: "天災人禍", hint: "點點 +4" },
+          // 2: 左中2 (被富婆抓去囚禁 每次骰到的點數減一)
+          { id: 2, title: "被富婆抓去囚禁", sub: "寸步難行", points: "點數減1", type: "disaster", tag: "持續 Debuff", hint: "在離開本層前，每次擲骰點數強制 -1（最少前進1格）" },
+          // 3: 左下 (她說他說 +2)
+          { id: 3, title: "她說他說", sub: "SDG 5 性別平等", points: "+2", type: "sdgs", tag: "SDGs 主題", hint: "平板打破男女刻板印象 20 題" },
+          // 4: 下中1 (逃離富婆白手起家 +3)
+          { id: 4, title: "逃離富婆白手起家", sub: "靠自己的實力發財", points: "+3", type: "fortune", tag: "天災人禍", hint: "點點 +3" },
+          // 5: 下中2 (被富婆棄養 -4)
+          { id: 5, title: "被富婆棄養", sub: "流浪街頭無家可歸", points: "-4", type: "disaster", tag: "天災人禍", hint: "扣除 4 個點點" },
+          // 6: 右下 (Hello Code +3)
+          { id: 6, title: "Hello Code", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點2", hint: "程式碼填空除錯推理" },
+          // 7: 右中2 (創業大失敗 退後2格)
+          { id: 7, title: "創業大失敗", sub: "資金燒光重回起點", points: "退後2格", type: "disaster", tag: "移動懲罰", hint: "小隊棋子退後 2 格" },
+          // 8: 右中1 (奢侈品買太多 -2)
+          { id: 8, title: "奢侈品買太多", sub: "刷爆卡繳不出卡費", points: "-2", type: "disaster", tag: "天災人禍", hint: "扣除 2 個點點" },
+          // 9: 右上 (接過一下 +2)
+          { id: 9, title: "接過一下", sub: "指定首尾音節詞語接龍", points: "+2", type: "fun", tag: "趣味遊戲", hint: "限時造詞接龍累積5分過關" },
+          // 10: 上中2 (白吃的午餐 +2)
+          { id: 10, title: "白吃的午餐", sub: "蹭到免費便當", points: "+2", type: "fortune", tag: "天災人禍", hint: "點點 +2" },
+          // 11: 上中1 (衝衝衝拉轟引擎發動 +?)
+          { id: 11, title: "衝衝衝拉轟引擎發動", sub: "加速前進狂飆", points: "+隨機點", type: "fortune", tag: "天災人禍", hint: "關主骰骰子決定額外贈送點點(+1~+3)" }
+        ]
+      },
+
+      // ===== 3F 亞太工商管理系（主題：課堂隱形術大師）=====
+      "3F": {
+        name: "3F 亞太系",
+        subTitle: "課堂隱形術大師",
+        themeColor: "indigo",
+        centerEmoji: "😴",
+        centerText: "3F",
+        centerSub: "流口水睡覺・期中考必過",
+        tiles: [
+          // 0: 左上 (特色產業 +3，出生點 ?)
+          { id: 0, title: "特色產業", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點1", hint: "24張東南亞國家與特色產業記憶翻牌" },
+          // 1: 左中1 (來自家長的救濟 +3)
+          { id: 1, title: "來自家長的救濟", sub: "生活費終於匯進來了", points: "+3", type: "fortune", tag: "天災人禍", hint: "點點 +3" },
+          // 2: 左中2 (成功考上研究所 +6 但要在15秒內算出管院迎新的筆畫數)
+          { id: 2, title: "成功考上研究所", sub: "頂大人人羨慕", points: "+6", type: "fortune", tag: "限時挑戰", hint: "+6點！但隊長需在15秒內算對「管院迎新」總筆畫數！" },
+          // 3: 左下 (抓好水源 +2)
+          { id: 3, title: "抓好水源", sub: "SDG 6 永續水資源", points: "+2", type: "sdgs", tag: "SDGs 主題", hint: "塑膠湯匙接力傳水滿200ml" },
+          // 4: 下中1 (教科書拿不到電子版 -1)
+          { id: 4, title: "教科書拿不到電子版", sub: "花大錢買厚重原文書", points: "-1", type: "disaster", tag: "天災人禍", hint: "扣除 1 個點點" },
+          // 5: 下中2 (耶晚遇到真命天子 +2)
+          { id: 5, title: "耶晚遇到真命天子", sub: "舞會浪漫邂逅", points: "+2", type: "fortune", tag: "天災人禍", hint: "點點 +2" },
+          // 6: 右下 (你捏我猜 +3)
+          { id: 6, title: "你捏我猜", sub: "系所專業闖關", points: "+3", type: "dept", tag: "紅格・出生點2", hint: "用黏土捏出特定國家地標讓隊友猜" },
+          // 7: 右中2 (成功偷到考古賺爛！ +1)
+          { id: 7, title: "成功偷到考古賺爛！", sub: "期末考考題全命中", points: "+1", type: "fortune", tag: "天災人禍", hint: "點點 +1" },
+          // 8: 右中1 (老師菜菜撈撈 前進2格)
+          { id: 8, title: "老師菜菜撈撈", sub: "佛心教授大放送", points: "前進2格", type: "fortune", tag: "天災人禍", hint: "直接向前大步走 2 格" },
+          // 9: 右上 (乒乓球吹杯賽 +2)
+          { id: 9, title: "乒乓球吹杯賽", sub: "不得用手・連吹5杯", points: "+2", type: "fun", tag: "趣味遊戲", hint: "不掉落將乒乓球吹過5杯水" },
+          // 10: 上中2 (睡過期中考 -2)
+          { id: 10, title: "睡過期中考", sub: "鬧鐘沒響起重修預警", points: "-2", type: "disaster", tag: "天災人禍", hint: "扣除 2 個點點" },
+          // 11: 上中1 (同學該掛掛掛 退後一格)
+          { id: 11, title: "同學該掛掛掛", sub: "分組報告被雷隊友拖累", points: "退後1格", type: "disaster", tag: "移動懲罰", hint: "小隊棋子退後 1 格" }
+        ]
+      }
+    };
+
+    // 8 個隊伍狀態
+    const teams = [
+      { id: 1, name: "第 1 組", color: "orange", bg: "bg-orange-500", text: "text-orange-400", border: "border-orange-500", score: 0, pos: { "B1": 0, "1F": 0, "2F": 0, "3F": 0 } },
+      { id: 2, name: "第 2 組", color: "pink", bg: "bg-pink-500", text: "text-pink-400", border: "border-pink-500", score: 0, pos: { "B1": 6, "1F": 6, "2F": 6, "3F": 6 } },
+      { id: 3, name: "第 3 組", color: "blue", bg: "bg-blue-500", text: "text-blue-400", border: "border-blue-500", score: 0, pos: { "B1": 0, "1F": 0, "2F": 0, "3F": 0 } },
+      { id: 4, name: "第 4 組", color: "emerald", bg: "bg-emerald-500", text: "text-emerald-400", border: "border-emerald-500", score: 0, pos: { "B1": 6, "1F": 6, "2F": 6, "3F": 6 } },
+      { id: 5, name: "第 5 組", color: "amber", bg: "bg-amber-400", text: "text-amber-400", border: "border-amber-400", score: 0, pos: { "B1": 0, "1F": 0, "2F": 0, "3F": 0 } },
+      { id: 6, name: "第 6 組", color: "cyan", bg: "bg-cyan-400", text: "text-cyan-400", border: "border-cyan-400", score: 0, pos: { "B1": 6, "1F": 6, "2F": 6, "3F": 6 } },
+      { id: 7, name: "第 7 組", color: "purple", bg: "bg-purple-500", text: "text-purple-400", border: "border-purple-500", score: 0, pos: { "B1": 0, "1F": 0, "2F": 0, "3F": 0 } },
+      { id: 8, name: "第 8 組", color: "red", bg: "bg-red-500", text: "text-red-400", border: "border-red-500", score: 0, pos: { "B1": 6, "1F": 6, "2F": 6, "3F": 6 } },
+    ];
+
+    // 特殊卡資料庫
+    const specialCards = [
+      { id: 1, name: "導彈攻擊", target: "對他人使用", effect: "指定任一敵隊扣除 2 個點點", tag: "攻擊卡", bg: "border-rose-500/50 bg-rose-950/20 text-rose-300" },
+      { id: 2, name: "防禦護盾", target: "對自己使用", effect: "抵銷一次天災人禍的扣分或退後效果", tag: "防禦卡", bg: "border-sky-500/50 bg-sky-950/20 text-sky-300" },
+      { id: 3, name: "天降甘霖", target: "對自己使用", effect: "全隊立刻直接獲得 +2 個點點", tag: "增益卡", bg: "border-amber-500/50 bg-amber-950/20 text-amber-300" },
+      { id: 4, name: "物價通膨", target: "對他人使用", effect: "指定敵隊下次通過關卡獎勵點數 -1", tag: "干擾卡", bg: "border-purple-500/50 bg-purple-950/20 text-purple-300" },
+      { id: 5, name: "點數互換術", target: "主控台核定", effect: "與臨近小隊交換目前獲得的特殊卡", tag: "戰略卡", bg: "border-emerald-500/50 bg-emerald-950/20 text-emerald-300" },
+      { id: 6, name: "瞬移傳送門", target: "對自己使用", effect: "小隊可直接向前跳躍 2 格", tag: "移動卡", bg: "border-indigo-500/50 bg-indigo-950/20 text-indigo-300" },
+      { id: 7, name: "關主同理心", target: "對自己使用", effect: "在系所專業關卡獲得關主多一次提示機會", tag: "輔助卡", bg: "border-teal-500/50 bg-teal-950/20 text-teal-300" },
+      { id: 8, name: "財富重分配", target: "回報Line群", effect: "使目前點數最高的小組捐出 1 點給最後一名", tag: "平衡卡", bg: "border-yellow-500/50 bg-yellow-950/20 text-yellow-300" },
+    ];
+
+    let currentFloor = "B1";
+    let activeTeamId = 1;
+
+    // 取得格子在 4x4 網格中的座標 (逆時針映射)
+    function getTileGridStyle(index) {
+      // 0: (row 1, col 1) 左上
+      // 1: (row 2, col 1) 左中1
+      // 2: (row 3, col 1) 左中2
+      // 3: (row 4, col 1) 左下
+      // 4: (row 4, col 2) 下中1
+      // 5: (row 4, col 3) 下中2
+      // 6: (row 4, col 4) 右下
+      // 7: (row 3, col 4) 右中2
+      // 8: (row 2, col 4) 右中1
+      // 9: (row 1, col 4) 右上
+      // 10: (row 1, col 3) 上中2
+      // 11: (row 1, col 2) 上中1
+      const coords = [
+        { r: 1, c: 1 }, { r: 2, c: 1 }, { r: 3, c: 1 }, { r: 4, c: 1 },
+        { r: 4, c: 2 }, { r: 4, c: 3 }, { r: 4, c: 4 }, { r: 3, c: 4 },
+        { r: 2, c: 4 }, { r: 1, c: 4 }, { r: 1, c: 3 }, { r: 1, c: 2 }
+      ];
+      const p = coords[index];
+      return `grid-row: ${p.r}; grid-column: ${p.c};`;
+    }
+
+    // 渲染當前樓層的盤面
+    function renderBoard() {
+      const container = document.getElementById('monopolyBoardContainer');
+      const boardData = floorBoards[currentFloor];
+      let html = '';
+
+      // 渲染 12 個外圈格子
+      boardData.tiles.forEach((tile, index) => {
+        const isCorner = index === 0 || index === 3 || index === 6 || index === 9;
+        const style = getTileGridStyle(index);
+
+        // 判斷格子樣式顏色
+        let colorClasses = "";
+        let badgeColor = "";
+        if (tile.type === "dept") {
+          colorClasses = "bg-rose-950/80 border-rose-500/80 text-rose-100 hover:bg-rose-900/90";
+          badgeColor = "bg-rose-600 text-white";
+        } else if (tile.type === "fun") {
+          colorClasses = "bg-purple-950/80 border-purple-500/80 text-purple-100 hover:bg-purple-900/90";
+          badgeColor = "bg-purple-600 text-white";
+        } else if (tile.type === "sdgs") {
+          colorClasses = "bg-sky-950/80 border-sky-500/80 text-sky-100 hover:bg-sky-900/90";
+          badgeColor = "bg-sky-600 text-white";
+        } else if (tile.type === "fortune") {
+          colorClasses = "bg-emerald-950/60 border-emerald-500/60 text-emerald-100 hover:bg-emerald-900/70";
+          badgeColor = "bg-emerald-600 text-white";
+        } else {
+          colorClasses = "bg-slate-900/90 border-slate-700/80 text-slate-200 hover:bg-slate-800";
+          badgeColor = "bg-rose-900/90 text-rose-300 border border-rose-700/50";
+        }
+
+        // 搜尋當前位在該格子的隊伍棋子
+        const pawnsOnTile = teams.filter(t => t.pos[currentFloor] === index);
+
+        html += `
+          <div style="${style}" onclick="triggerTileEvent(${index})" class="${isCorner ? 'tile-corner' : 'tile-edge'} relative border rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer transition active:scale-[0.98] ${colorClasses} overflow-hidden group">
+            
+            <!-- 格子頂端資訊 -->
+            <div class="flex items-center justify-between gap-1 leading-none">
+              <span class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded ${badgeColor} truncate max-w-[85px]">
+                ${tile.tag}
+              </span>
+              <span class="text-[10px] sm:text-xs font-black ${tile.points.includes('-') ? 'text-rose-400' : 'text-amber-300'} font-mono">
+                ${tile.points}
+              </span>
+            </div>
+
+            <!-- 格子主文字（精準對應 PDF 標題） -->
+            <div class="my-auto py-0.5 text-center">
+              <div class="text-[11px] sm:text-xs md:text-sm font-black leading-tight tracking-tight line-clamp-2">
+                ${tile.title}
+              </div>
+            </div>
+
+            <!-- 棋子顯示列 (若有隊伍棋子停靠) -->
+            <div class="min-h-[18px] flex items-center justify-center gap-1 flex-wrap pt-0.5">
+              ${pawnsOnTile.map(p => `
+                <div class="w-4 h-4 sm:w-5 sm:h-5 rounded-full ${p.bg} text-slate-950 font-black text-[9px] sm:text-[11px] flex items-center justify-center shadow-md border border-white/80 ${p.id === activeTeamId ? 'pawn-active ring-2 ring-amber-300' : ''}" title="${p.name}">
+                  ${p.id}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      // 渲染中心 2x2 樓層梗圖標誌區 (佔據 Row 2~3, Col 2~3)
+      html += `
+        <div style="grid-row: 2 / span 2; grid-column: 2 / span 2;" class="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 p-3 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-inner">
+          <div class="absolute inset-0 bg-radial from-amber-500/5 to-transparent pointer-events-none"></div>
+          
+          <span class="text-3xl sm:text-4xl filter drop-shadow-md mb-0.5 animate-bounce">
+            ${boardData.centerEmoji}
+          </span>
+          <h2 class="text-2xl sm:text-4xl font-black text-white tracking-wider font-mono">
+            ${boardData.centerText}
+          </h2>
+          <div class="text-[11px] sm:text-xs font-black text-amber-400 mt-0.5">
+            ${boardData.subTitle}
+          </div>
+          <div class="text-[9px] sm:text-[10px] text-slate-400 mt-1 max-w-[150px] leading-tight">
+            ${boardData.centerSub}
+          </div>
+
+          <div class="mt-2.5 flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2 py-1 rounded-full text-[10px] text-slate-300">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>逆時針骰子移動</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    // 切換樓層
+    function changeFloor(floor) {
+      currentFloor = floor;
+      // 更新 Tab 樣式
+      ['B1', '1F', '2F', '3F'].forEach(f => {
+        const btn = document.getElementById(`btnFloor${f}`);
+        if (f === floor) {
+          btn.className = "floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-lg shadow-indigo-900/40";
+        } else {
+          btn.className = "floor-tab-btn flex-1 min-w-[75px] py-2 px-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700";
+        }
+      });
+      renderBoard();
+      closeAlert();
+    }
+
+    // 設定當前操作小組
+    function setCurrentTeam(teamId) {
+      activeTeamId = parseInt(teamId, 10);
+      renderBoard();
+    }
+
+    // 擲骰子功能 (限定 1 ~ 3 點，符合企劃書與隊輔規定)
+    function rollDice() {
+      const diceFace = document.getElementById('diceFace');
+      const rollBtn = document.getElementById('rollDiceBtn');
+      diceFace.classList.add('dice-rolling');
+      rollBtn.disabled = true;
+
+      // 快速亂數滾動視覺
+      let timer = setInterval(() => {
+        diceFace.innerText = Math.floor(Math.random() * 3) + 1;
+      }, 70);
+
+      setTimeout(() => {
+        clearInterval(timer);
+        const finalRoll = Math.floor(Math.random() * 3) + 1;
+        diceFace.innerText = finalRoll;
+        diceFace.classList.remove('dice-rolling');
+        rollBtn.disabled = false;
+
+        // 小隊棋子沿著逆時針移動 finalRoll 步
+        moveTeamPawn(activeTeamId, finalRoll);
+      }, 450);
+    }
+
+    // 依照逆時針移動棋子
+    function moveTeamPawn(teamId, steps) {
+      const team = teams.find(t => t.id === teamId);
+      if (!team) return;
+
+      let currentPos = team.pos[currentFloor];
+      let newPos = (currentPos + steps + 12) % 12;
+      team.pos[currentFloor] = newPos;
+
+      renderBoard();
+      triggerTileEvent(newPos);
+    }
+
+    // 手動微調棋子步數
+    function stepCurrentPawn(direction) {
+      moveTeamPawn(activeTeamId, direction);
+    }
+
+    // 觸發格子事件提示框
+    function triggerTileEvent(tileIndex) {
+      const tile = floorBoards[currentFloor].tiles[tileIndex];
+      const alertBox = document.getElementById('tileEventAlert');
+      const alertIcon = document.getElementById('alertIcon');
+      const alertTitle = document.getElementById('alertTitle');
+      const alertDesc = document.getElementById('alertDesc');
+
+      alertTitle.innerHTML = `<span class="text-amber-400 font-mono">[${currentFloor} 格子 ${tileIndex + 1}/12]</span> ${tile.title} (${tile.points})`;
+      alertDesc.innerText = `${tile.hint}・${tile.sub}`;
+
+      if (tile.type === 'dept') alertIcon.innerText = '🚩';
+      else if (tile.type === 'sdgs') alertIcon.innerText = '🌍';
+      else if (tile.type === 'fun') alertIcon.innerText = '🎉';
+      else if (tile.type === 'disaster') alertIcon.innerText = '💥';
+      else alertIcon.innerText = '🎁';
+
+      alertBox.classList.remove('hidden');
+    }
+
+    function closeAlert() {
+      document.getElementById('tileEventAlert').classList.add('hidden');
+    }
+
+    // 渲染計分板 (Page 5 各組點點)
+    function renderScoreboard() {
+      const container = document.getElementById('teamScoreCardsContainer');
+      container.innerHTML = teams.map(team => `
+        <div class="bg-slate-950 rounded-2xl border ${team.border} p-3.5 flex flex-col justify-between shadow-lg relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full ${team.bg} text-slate-950 font-black text-xs flex items-center justify-center">
+                ${team.id}
+              </span>
+              <span class="font-extrabold text-white text-sm">${team.name}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">目前位於 ${currentFloor}</span>
+          </div>
+
+          <!-- 大點數展示 -->
+          <div class="my-2 py-1 text-center bg-slate-900/80 rounded-xl border border-slate-800">
+            <div class="text-2xl sm:text-3xl font-black ${team.text} font-mono tracking-tight" id="teamScoreDisplay_${team.id}">
+              ${team.score}
+            </div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">累積點點</div>
+          </div>
+
+          <!-- 快速加減分操作按鈕 -->
+          <div class="grid grid-cols-4 gap-1 mt-1">
+            <button onclick="modifyScore(${team.id}, -2)" class="py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 font-black text-xs">-2</button>
+            <button onclick="modifyScore(${team.id}, -1)" class="py-1 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-black text-xs">-1</button>
+            <button onclick="modifyScore(${team.id}, 1)" class="py-1 rounded bg-indigo-950 hover:bg-indigo-900 text-indigo-300 font-black text-xs">+1</button>
+            <button onclick="modifyScore(${team.id}, 2)" class="py-1 rounded bg-indigo-900 hover:bg-indigo-800 text-indigo-200 font-black text-xs">+2</button>
+          </div>
+          <div class="grid grid-cols-2 gap-1 mt-1">
+            <button onclick="modifyScore(${team.id}, 3)" class="py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs">+3 (紅格)</button>
+            <button onclick="modifyScore(${team.id}, 6)" class="py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">+6 (特賞)</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 增減分數
+    function modifyScore(teamId, delta, note = "") {
+      const team = teams.find(t => t.id === teamId);
+      if (!team) return;
+      team.score = Math.max(0, team.score + delta);
+
+      // 日誌紀錄
+      addScoreLog(team.name, delta, note);
+      renderScoreboard();
+    }
+
+    // 快速給當前小隊加分
+    function quickAddPoints(points) {
+      modifyScore(activeTeamId, points, `通過 ${currentFloor} 關卡快速核發`);
+    }
+
+    // 增加異動日誌
+    function addScoreLog(teamName, delta, note) {
+      const logList = document.getElementById('scoreLogList');
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const isPlus = delta >= 0;
+
+      const logItem = document.createElement('div');
+      logItem.className = "flex items-center justify-between p-1.5 rounded bg-slate-900 border border-slate-800 text-[11px]";
+      logItem.innerHTML = `
+        <span class="text-slate-400 font-mono">${timeStr}</span>
+        <span class="font-bold text-white">${teamName}</span>
+        <span class="${isPlus ? 'text-emerald-400' : 'text-rose-400'} font-black font-mono">
+          ${isPlus ? '+' + delta : delta} 點
+        </span>
+        <span class="text-slate-500 truncate max-w-[120px]">${note || '隊輔核准登記'}</span>
+      `;
+      
+      // 若是第一筆則清除預設文字
+      if (logList.innerHTML.includes('目前尚無點數增減紀錄')) {
+        logList.innerHTML = '';
+      }
+      logList.prepend(logItem);
+    }
+
+    function clearScoreLog() {
+      document.getElementById('scoreLogList').innerHTML = '<div class="text-center py-4 text-slate-600">目前尚無點數增減紀錄</div>';
+    }
+
+    function resetAllScores() {
+      teams.forEach(t => t.score = 0);
+      renderScoreboard();
+      addScoreLog("全體小隊", 0, "隊輔重置所有組別點點為 0");
+    }
+
+    function renderSpecialCards() {
+      const container = document.getElementById('specialCardsList');
+      container.innerHTML = specialCards.map(c => `
+        <div class="rounded-xl border p-2.5 flex flex-col justify-between ${c.bg} transition hover:scale-[1.02]">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-black/40">${c.tag}</span>
+              <span class="text-[9px] font-bold opacity-80">${c.target}</span>
+            </div>
+            <h5 class="text-xs font-black text-white mt-1">${c.name}</h5>
+            <p class="text-[10px] opacity-90 mt-1 leading-relaxed">${c.effect}</p>
+          </div>
+          <button onclick="useSpecialCard('${c.name}')" class="mt-2 w-full py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] font-black transition">
+            宣布使用
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function drawRandomSpecialCard() {
+      const randomIndex = Math.floor(Math.random() * specialCards.length);
+      const card = specialCards[randomIndex];
+      triggerTileEvent(0); // 借用提示框
+      const alertTitle = document.getElementById('alertTitle');
+      const alertDesc = document.getElementById('alertDesc');
+      const alertIcon = document.getElementById('alertIcon');
+      alertIcon.innerText = '🃏';
+      alertTitle.innerText = `獲得特殊卡：【${card.name}】(${card.tag})`;
+      alertDesc.innerText = `【${card.target}】${card.effect}（每張卡限使用一次，請隊輔在 Line 群回報主控台）`;
+    }
+
+    function useSpecialCard(name) {
+      triggerTileEvent(0);
+      const alertTitle = document.getElementById('alertTitle');
+      const alertDesc = document.getElementById('alertDesc');
+      const alertIcon = document.getElementById('alertIcon');
+      alertIcon.innerText = '📢';
+      alertTitle.innerText = `小隊宣告使用特殊卡：【${name}】`;
+      alertDesc.innerText = `請隊輔確認目標對象，若涉及他人扣分/交換，立刻於隊輔 Line 群回報主控台執行！`;
+    }
+
+    function switchTab(tab) {
+      const viewBoard = document.getElementById('viewBoard');
+      const viewScoreboard = document.getElementById('viewScoreboard');
+      const viewRules = document.getElementById('viewRules');
+
+      const btnBoard = document.getElementById('tabBtnBoard');
+      const btnScore = document.getElementById('tabBtnScore');
+      const btnRules = document.getElementById('tabBtnRules');
+
+      // 隱藏所有頁面
+      viewBoard.classList.add('hidden');
+      viewScoreboard.classList.add('hidden');
+      viewRules.classList.add('hidden');
+
+      // 重設按鈕樣式
+      [btnBoard, btnScore, btnRules].forEach(btn => {
+        btn.className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white";
+      });
+
+      if (tab === 'board') {
+        viewBoard.classList.remove('hidden');
+        btnBoard.className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm";
+      } else if (tab === 'scoreboard') {
+        viewScoreboard.classList.remove('hidden');
+        btnScore.className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm";
+        renderScoreboard();
+      } else if (tab === 'rules') {
+        viewRules.classList.remove('hidden');
+        btnRules.className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm";
+        renderSpecialCards();
+      }
+    }
+
+    // 初始化載入
+    window.onload = function() {
+      renderBoard();
+      renderScoreboard();
+      renderSpecialCards();
+    };
+  </script>
+</body>
+</html>
